@@ -1,4 +1,4 @@
-# Deploy Devex Logistics
+# Deploy Devex Shipping Solutions
 
 ## What is ready
 
@@ -16,7 +16,7 @@
 ```powershell
 git init
 git add .
-git commit -m "Initial Devex Logistics website"
+git commit -m "Initial Devex Shipping Solutions website"
 git branch -M main
 git remote add origin https://github.com/YOUR-GITHUB-USERNAME/devex-logistics.git
 git push -u origin main

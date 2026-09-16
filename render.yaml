@@ -1,6 +1,6 @@
 services:
   - type: web
-    name: devex-logistics
+    name: devex-shipping-solutions
     runtime: docker
     healthCheckPath: /health
     autoDeploy: true

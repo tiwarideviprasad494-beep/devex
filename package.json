@@ -1,8 +1,8 @@
 {
-  "name": "devex-logistics",
+  "name": "devex-shipping-solutions",
   "version": "1.0.0",
   "private": true,
-  "description": "Devex Logistics global logistics website and quote API",
+  "description": "Devex Shipping Solutions global logistics website and quote API",
   "scripts": { "start": "node server.js" },
   "engines": { "node": ">=18" }
 }

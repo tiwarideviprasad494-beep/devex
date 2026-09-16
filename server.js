@@ -22,7 +22,7 @@ function serveFile(res, filename, type) { fs.readFile(path.join(ROOT, filename),
 
 http.createServer(async (req, res) => {
   const url = new URL(req.url, `http://${req.headers.host}`);
-  if (req.method === 'GET' && url.pathname === '/health') return send(res, 200, { ok: true, service: 'devex-logistics' });
+  if (req.method === 'GET' && url.pathname === '/health') return send(res, 200, { ok: true, service: 'devex-shipping-solutions' });
   if (req.method === 'GET' && url.pathname === '/') return serveFile(res, 'index.html', 'text/html');
   if (req.method === 'GET' && url.pathname === '/styles.css') return serveFile(res, 'styles.css', 'text/css');
   if (req.method === 'GET' && url.pathname === '/script.js') return serveFile(res, 'script.js', 'application/javascript');
@@ -44,4 +44,4 @@ http.createServer(async (req, res) => {
     } catch { return send(res, 400, { ok: false, error: 'Invalid request.' }); }
   }
   send(res, 404, { error: 'Not found' });
-}).listen(PORT, () => console.log(`Devex Logistics is running at http://localhost:${PORT}`));
+}).listen(PORT, () => console.log(`Devex Shipping Solutions is running at http://localhost:${PORT}`));

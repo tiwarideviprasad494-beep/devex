@@ -28,7 +28,7 @@ document.querySelector('#quote-form').addEventListener('submit', (event) => {
       message.textContent = `Request ${result.reference} received. Our freight desk will contact you within one business day.`;
       form.reset();
     })
-    .catch(() => { message.textContent = 'We could not send your request. Please email hello@devexlogistics.example.'; });
+    .catch(() => { message.textContent = 'We could not send your request. Please email hello@devexshippingsolutions.example.'; });
 });
 
 document.querySelector('.menu-toggle').addEventListener('click', () => {

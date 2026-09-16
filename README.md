@@ -1,4 +1,4 @@
-# Devex Logistics
+# Devex Shipping Solutions
 
 A deployable global logistics marketing site with shipment-tracking and quote-request APIs.
 
