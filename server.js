@@ -26,6 +26,7 @@ http.createServer(async (req, res) => {
   if (req.method === 'GET' && url.pathname === '/') return serveFile(res, 'index.html', 'text/html');
   if (req.method === 'GET' && url.pathname === '/styles.css') return serveFile(res, 'styles.css', 'text/css');
   if (req.method === 'GET' && url.pathname === '/script.js') return serveFile(res, 'script.js', 'application/javascript');
+  if (req.method === 'GET' && url.pathname === '/devex_logo.png') return serveFile(res, 'devex_logo.png', 'image/png');
   if (req.method === 'GET' && url.pathname.startsWith('/api/track/')) {
     const reference = decodeURIComponent(url.pathname.split('/').pop()).toUpperCase();
     const shipment = shipments[reference];
