@@ -34,9 +34,11 @@ http.createServer(async (req, res) => {
   if (req.method === 'POST' && url.pathname === '/api/quotes') {
     try {
       const quote = JSON.parse(await getBody(req));
-      const required = ['origin', 'destination', 'type', 'weight', 'email'];
-      if (required.some(key => !String(quote[key] || '').trim()) || !/^\S+@\S+\.\S+$/.test(quote.email)) return send(res, 400, { ok: false, error: 'Please complete all fields with a valid email.' });
-      const entry = { id: `Q-${crypto.randomUUID().slice(0, 8).toUpperCase()}`, createdAt: new Date().toISOString(), ...Object.fromEntries(required.map(key => [key, String(quote[key]).trim()])) };
+      const required = ['name', 'phone', 'tradeType', 'origin', 'destination', 'cargoType', 'freightMode'];
+      if (required.some(key => !String(quote[key] || '').trim()) || quote.consent !== true) return send(res, 400, { ok: false, error: 'Please complete the required shipment details and consent checkbox.' });
+      if (quote.email && !/^\S+@\S+\.\S+$/.test(String(quote.email))) return send(res, 400, { ok: false, error: 'Please enter a valid email address.' });
+      const fields = [...required, 'company', 'email', 'measurement', 'readyDate', 'message'];
+      const entry = { id: `Q-${crypto.randomUUID().slice(0, 8).toUpperCase()}`, createdAt: new Date().toISOString(), consent: true, ...Object.fromEntries(fields.map(key => [key, String(quote[key] || '').trim()])) };
       fs.mkdirSync(path.dirname(QUOTES_PATH), { recursive: true });
       const existing = fs.existsSync(QUOTES_PATH) ? JSON.parse(fs.readFileSync(QUOTES_PATH, 'utf8')) : [];
       existing.push(entry); fs.writeFileSync(QUOTES_PATH, JSON.stringify(existing, null, 2));
