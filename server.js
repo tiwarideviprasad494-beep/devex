@@ -2,6 +2,7 @@ const http = require('node:http');
 const fs = require('node:fs');
 const path = require('node:path');
 const crypto = require('node:crypto');
+const nodemailer = require('nodemailer');
 
 const PORT = process.env.PORT || 3000;
 const ROOT = __dirname;
@@ -12,6 +13,64 @@ const shipments = {
   'NSF-2026-002': { status: 'Customs clearance', location: 'Singapore · import processing', eta: '2026-09-18' },
   'NSF-2026-003': { status: 'Delivered', location: 'Chicago, US · proof of delivery available', eta: null }
 };
+
+function getTransporter() {
+  if (!process.env.SMTP_PASS) {
+    return null;
+  }
+  const smtpUser = process.env.SMTP_USER || 'info@devexss.com';
+  return nodemailer.createTransport({
+    host: process.env.SMTP_HOST || 'smtp.gmail.com',
+    port: Number(process.env.SMTP_PORT || 587),
+    secure: process.env.SMTP_SECURE === 'true',
+    auth: {
+      user: smtpUser,
+      pass: process.env.SMTP_PASS
+    }
+  });
+}
+
+async function sendQuoteNotification(entry) {
+  const transporter = getTransporter();
+  if (!transporter) {
+    console.log(`[QUOTE RECEIVED] Saved to quotes.json: ${entry.id}. (To enable instant email alerts to owner, set the Google Workspace SMTP_PASS app-password in Render (SMTP_USER defaults to info@devexss.com)).`);
+    return;
+  }
+
+  const recipient = process.env.NOTIFICATION_EMAIL || 'info@devexss.com';
+  const htmlContent = `
+    <h2>New Quote Request Received: ${entry.id}</h2>
+    <p><b>Received At:</b> ${new Date(entry.createdAt).toLocaleString()}</p>
+    <hr>
+    <h3>Customer Details</h3>
+    <ul>
+      <li><b>Name:</b> ${entry.name}</li>
+      <li><b>Company:</b> ${entry.company || 'N/A'}</li>
+      <li><b>Phone:</b> ${entry.phone}</li>
+      <li><b>Email:</b> ${entry.email || 'N/A'}</li>
+    </ul>
+    <h3>Shipment Details</h3>
+    <ul>
+      <li><b>Trade Type:</b> ${entry.tradeType}</li>
+      <li><b>Freight Mode:</b> ${entry.freightMode}</li>
+      <li><b>Origin:</b> ${entry.origin}</li>
+      <li><b>Destination:</b> ${entry.destination}</li>
+      <li><b>Cargo Type:</b> ${entry.cargoType}</li>
+      <li><b>Approx. Weight/Volume:</b> ${entry.measurement || 'N/A'}</li>
+      <li><b>Ready Date:</b> ${entry.readyDate || 'N/A'}</li>
+    </ul>
+    <h3>Message</h3>
+    <p>${entry.message || 'No additional message.'}</p>
+  `;
+
+  await transporter.sendMail({
+    from: `"Devex Shipping Site" <${process.env.SMTP_USER || 'info@devexss.com'}>`,
+    to: recipient,
+    subject: `[New Quote Request ${entry.id}] ${entry.name} - ${entry.tradeType} (${entry.origin} -> ${entry.destination})`,
+    html: htmlContent
+  });
+  console.log(`[QUOTE NOTIFICATION] Email sent successfully to ${recipient} for quote ${entry.id}`);
+}
 
 function send(res, code, payload, type = 'application/json') {
   res.writeHead(code, { 'Content-Type': `${type}; charset=utf-8`, 'X-Content-Type-Options': 'nosniff' });
@@ -27,6 +86,7 @@ http.createServer(async (req, res) => {
   if (req.method === 'GET' && url.pathname === '/styles.css') return serveFile(res, 'styles.css', 'text/css');
   if (req.method === 'GET' && url.pathname === '/script.js') return serveFile(res, 'script.js', 'application/javascript');
   if (req.method === 'GET' && url.pathname === '/devex_logo.png') return serveFile(res, 'devex_logo.png', 'image/png');
+  if (req.method === 'GET' && url.pathname.startsWith('/images/')) return serveFile(res, url.pathname.slice(1), url.pathname.endsWith('.png') ? 'image/png' : 'image/jpeg');
   if (req.method === 'GET' && url.pathname.startsWith('/api/track/')) {
     const reference = decodeURIComponent(url.pathname.split('/').pop()).toUpperCase();
     const shipment = shipments[reference];
@@ -43,6 +103,9 @@ http.createServer(async (req, res) => {
       fs.mkdirSync(path.dirname(QUOTES_PATH), { recursive: true });
       const existing = fs.existsSync(QUOTES_PATH) ? JSON.parse(fs.readFileSync(QUOTES_PATH, 'utf8')) : [];
       existing.push(entry); fs.writeFileSync(QUOTES_PATH, JSON.stringify(existing, null, 2));
+
+      sendQuoteNotification(entry).catch(err => console.error('[QUOTE EMAIL ERROR]', err));
+
       return send(res, 201, { ok: true, reference: entry.id });
     } catch { return send(res, 400, { ok: false, error: 'Invalid request.' }); }
   }
