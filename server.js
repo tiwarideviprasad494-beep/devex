@@ -2,7 +2,6 @@ const http = require('node:http');
 const fs = require('node:fs');
 const path = require('node:path');
 const crypto = require('node:crypto');
-const nodemailer = require('nodemailer');
 
 const PORT = process.env.PORT || 3000;
 const ROOT = __dirname;
@@ -14,64 +13,66 @@ const shipments = {
   'NSF-2026-003': { status: 'Delivered', location: 'Chicago, US · proof of delivery available', eta: null }
 };
 
-function getTransporter() {
-  if (!process.env.SMTP_PASS) {
-    return null;
-  }
-  const smtpUser = process.env.SMTP_USER || 'info@devexss.com';
-  return nodemailer.createTransport({
-    host: process.env.SMTP_HOST || 'smtp.gmail.com',
-    port: Number(process.env.SMTP_PORT || 587),
-    secure: process.env.SMTP_SECURE === 'true',
-    auth: {
-      user: smtpUser,
-      pass: process.env.SMTP_PASS
-    }
-  });
+function escapeHtml(value) {
+  return String(value ?? '').replace(/[&<>"']/g, character => ({
+    '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'
+  })[character]);
 }
 
 async function sendQuoteNotification(entry) {
-  const transporter = getTransporter();
-  if (!transporter) {
-    console.log(`[QUOTE RECEIVED] Saved to quotes.json: ${entry.id}. (To enable instant email alerts to owner, set the Google Workspace SMTP_PASS app-password in Render (SMTP_USER defaults to info@devexss.com)).`);
+  if (!process.env.RESEND_API_KEY) {
+    console.log(`[QUOTE RECEIVED] Saved to quotes.json: ${entry.id}. Set RESEND_API_KEY in Render to send email notifications.`);
     return;
   }
 
   const recipient = process.env.NOTIFICATION_EMAIL || 'info@devexss.com';
+  const sender = process.env.EMAIL_FROM || 'Devex Shipping Site <info@devexss.com>';
+  const subject = `[New Quote Request ${entry.id}] ${String(entry.name).replace(/[\r\n]+/g, ' ')} - ${String(entry.tradeType).replace(/[\r\n]+/g, ' ')}`;
   const htmlContent = `
-    <h2>New Quote Request Received: ${entry.id}</h2>
-    <p><b>Received At:</b> ${new Date(entry.createdAt).toLocaleString()}</p>
+    <h2>New Quote Request Received: ${escapeHtml(entry.id)}</h2>
+    <p><b>Received At:</b> ${escapeHtml(new Date(entry.createdAt).toLocaleString())}</p>
     <hr>
     <h3>Customer Details</h3>
     <ul>
-      <li><b>Name:</b> ${entry.name}</li>
-      <li><b>Company:</b> ${entry.company || 'N/A'}</li>
-      <li><b>Phone:</b> ${entry.phone}</li>
-      <li><b>Email:</b> ${entry.email || 'N/A'}</li>
+      <li><b>Name:</b> ${escapeHtml(entry.name)}</li>
+      <li><b>Company:</b> ${escapeHtml(entry.company || 'N/A')}</li>
+      <li><b>Phone:</b> ${escapeHtml(entry.phone)}</li>
+      <li><b>Email:</b> ${escapeHtml(entry.email || 'N/A')}</li>
     </ul>
     <h3>Shipment Details</h3>
     <ul>
-      <li><b>Trade Type:</b> ${entry.tradeType}</li>
-      <li><b>Freight Mode:</b> ${entry.freightMode}</li>
-      <li><b>Origin:</b> ${entry.origin}</li>
-      <li><b>Destination:</b> ${entry.destination}</li>
-      <li><b>Cargo Type:</b> ${entry.cargoType}</li>
-      <li><b>Approx. Weight/Volume:</b> ${entry.measurement || 'N/A'}</li>
-      <li><b>Ready Date:</b> ${entry.readyDate || 'N/A'}</li>
+      <li><b>Trade Type:</b> ${escapeHtml(entry.tradeType)}</li>
+      <li><b>Freight Mode:</b> ${escapeHtml(entry.freightMode)}</li>
+      <li><b>Origin:</b> ${escapeHtml(entry.origin)}</li>
+      <li><b>Destination:</b> ${escapeHtml(entry.destination)}</li>
+      <li><b>Cargo Type:</b> ${escapeHtml(entry.cargoType)}</li>
+      <li><b>Approx. Weight/Volume:</b> ${escapeHtml(entry.measurement || 'N/A')}</li>
+      <li><b>Ready Date:</b> ${escapeHtml(entry.readyDate || 'N/A')}</li>
     </ul>
     <h3>Message</h3>
-    <p>${entry.message || 'No additional message.'}</p>
+    <p>${escapeHtml(entry.message || 'No additional message.')}</p>
   `;
 
-  await transporter.sendMail({
-    from: `"Devex Shipping Site" <${process.env.SMTP_USER || 'info@devexss.com'}>`,
-    to: recipient,
-    subject: `[New Quote Request ${entry.id}] ${entry.name} - ${entry.tradeType} (${entry.origin} -> ${entry.destination})`,
-    html: htmlContent
+  const response = await fetch('https://api.resend.com/emails', {
+    method: 'POST',
+    headers: {
+      Authorization: `Bearer ${process.env.RESEND_API_KEY}`,
+      'Content-Type': 'application/json'
+    },
+    body: JSON.stringify({
+      from: sender,
+      to: [recipient],
+      subject,
+      html: htmlContent,
+      reply_to: entry.email || undefined
+    })
   });
-  console.log(`[QUOTE NOTIFICATION] Email sent successfully to ${recipient} for quote ${entry.id}`);
+  const result = await response.json().catch(() => ({}));
+  if (!response.ok) {
+    throw new Error(`Resend API ${response.status}: ${result.message || result.name || 'email request failed'}`);
+  }
+  console.log(`[QUOTE NOTIFICATION] Resend accepted email ${result.id || ''} for ${recipient}`);
 }
-
 function send(res, code, payload, type = 'application/json') {
   res.writeHead(code, { 'Content-Type': `${type}; charset=utf-8`, 'X-Content-Type-Options': 'nosniff' });
   res.end(type === 'application/json' ? JSON.stringify(payload) : payload);

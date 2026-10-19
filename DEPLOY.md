@@ -28,3 +28,10 @@ git push -u origin main
 ## Before accepting customer data
 
 The current quote store is a local JSON file. It is suitable for development only. Use a managed database plus a transactional email/CRM integration before collecting genuine customer inquiries.
+## Quote email alerts
+
+Quote notifications are sent through the Resend HTTPS API so they work on Render Free. To enable delivery:
+
+1. Add and verify `devexss.com` in Resend, then add the DNS records Resend provides in Squarespace. Preserve the existing Google Workspace MX records; merge SPF records if Resend requests an SPF change instead of creating a second SPF record.
+2. Create a Resend API key and add it to the Render service as `RESEND_API_KEY`.
+3. The default sender and recipient are both `info@devexss.com`. Set `EMAIL_FROM` only if you want to use a different verified sender, and `NOTIFICATION_EMAIL` only if notifications should go elsewhere.
