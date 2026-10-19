@@ -542,3 +542,4 @@
   .modal-body { grid-template-columns: 1fr; }
   .modal-sidebar { height: 220px; }
 }
+.developer-credit{margin-top:20px;text-align:center;font-size:9px;font-weight:600;letter-spacing:.12em;color:#8596a2;text-transform:uppercase}

@@ -2,6 +2,10 @@ const menu = document.querySelector('.menu'); const nav = document.querySelector
 menu.addEventListener('click', () => { const open = menu.classList.toggle('open'); menu.setAttribute('aria-expanded', String(open)); menu.textContent = open ? '×' : '☰'; });
 nav.querySelectorAll('a').forEach(link => link.addEventListener('click', () => { menu.classList.remove('open'); menu.setAttribute('aria-expanded','false'); menu.textContent='☰'; }));
 
+const phoneInput = document.querySelector('#quote-form [name="phone"]');
+phoneInput.addEventListener('input', () => {
+  phoneInput.value = phoneInput.value.replace(/[^0-9+().\s-]/g, '');
+});
 document.querySelector('#quote-form').addEventListener('submit', async event => {
   event.preventDefault();
   const form = event.currentTarget;

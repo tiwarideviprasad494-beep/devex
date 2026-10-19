@@ -98,6 +98,9 @@ http.createServer(async (req, res) => {
       const quote = JSON.parse(await getBody(req));
       const required = ['name', 'phone', 'tradeType', 'origin', 'destination', 'cargoType', 'freightMode'];
       if (required.some(key => !String(quote[key] || '').trim()) || quote.consent !== true) return send(res, 400, { ok: false, error: 'Please complete the required shipment details and consent checkbox.' });
+      const phone = String(quote.phone || '').trim();
+      const phoneDigits = phone.replace(/\D/g, '').length;
+      if (!/^\+?[0-9().\s-]+$/.test(phone) || phoneDigits < 7 || phoneDigits > 15) return send(res, 400, { ok: false, error: 'Please enter a valid phone number using digits and standard phone formatting only.' });
       if (quote.email && !/^\S+@\S+\.\S+$/.test(String(quote.email))) return send(res, 400, { ok: false, error: 'Please enter a valid email address.' });
       const fields = [...required, 'company', 'email', 'measurement', 'readyDate', 'message'];
       const entry = { id: `Q-${crypto.randomUUID().slice(0, 8).toUpperCase()}`, createdAt: new Date().toISOString(), consent: true, ...Object.fromEntries(fields.map(key => [key, String(quote[key] || '').trim()])) };
